@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZanzOS // Full Omni v78.0</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-silk: #fcfcfd;
+            --glass: rgba(255, 255, 255, 0.85);
+            --navy: #0f172a;
+            --heavy-ease: cubic-bezier(0.33, 1, 0.68, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { background: #e2e8f0; color: var(--navy); overflow: hidden; height: 100vh; touch-action: none; }
+
+        /* --- NAVIGATION CONTROL --- */
+        .back-btn { position: fixed; top: 60px; left: 30px; z-index: 20000; width: 50px; height: 50px; background: var(--glass); backdrop-filter: blur(25px); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); cursor: pointer; opacity: 0; transform: scale(0.8); transition: 0.7s var(--heavy-ease); border: 1px solid rgba(255,255,255,0.4); pointer-events: none; }
+        .show-back { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+        /* --- SYSTEM LAYERS --- */
+        #lock-screen, #pin-screen, #portfolio-hub, #node-selector, #final-dashboard { position: fixed; inset: 0; transition: 1.2s var(--heavy-ease); }
+        
+        #lock-screen { z-index: 10000; background: radial-gradient(circle at top, #fff, #f1f5f9); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 120px 0 60px; }
+        .swiped-lock #lock-screen { transform: translateY(-110%) scale(0.9); filter: blur(15px); }
+
+        #pin-screen { z-index: 9000; background: rgba(255,255,255,0.8); backdrop-filter: blur(40px); opacity: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: scale(1.1); }
+        .swiped-lock #pin-screen { opacity: 1; transform: scale(1); }
+        .unlocked #pin-screen { transform: translateY(-100%); }
+
+        #portfolio-hub { z-index: 8000; background: var(--bg-silk); display: none; padding: 130px 30px; overflow-y: auto; }
+        .unlocked #portfolio-hub { display: block; }
+        .show-selector #portfolio-hub { transform: scale(0.9); opacity: 0; pointer-events: none; }
+
+        #node-selector { z-index: 7500; background: #fff; display: none; padding: 130px 30px; overflow-y: auto; }
+        .show-selector #node-selector { display: block; }
+        .final-step #node-selector { transform: scale(1.1); opacity: 0; pointer-events: none; }
+
+        #final-dashboard { z-index: 7000; background: var(--bg-silk); display: none; padding: 130px 30px; }
+        .final-step #final-dashboard { display: block; }
+
+        /* --- APP WINDOW SYSTEM --- */
+        .window-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(15px); z-index: 15000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: 0.8s var(--heavy-ease); }
+        .window-content { width: 100%; height: 85vh; background: var(--glass); backdrop-filter: blur(50px); border-radius: 40px 40px 0 0; padding: 25px; transform: translateY(100%); transition: 0.8s var(--heavy-ease); display: flex; flex-direction: column; position: relative; }
+        .window-overlay.active { opacity: 1; pointer-events: auto; }
+        .window-overlay.active .window-content { transform: translateY(0); }
+        
+        .win-header { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; position: relative; }
+        .win-bar { width: 45px; height: 5px; background: #cbd5e1; border-radius: 10px; cursor: pointer; margin-bottom: 5px; }
+        .win-close-btn { position: absolute; top: 0; right: 0; width: 35px; height: 35px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.7rem; cursor: pointer; }
+
+        /* --- PIN UI --- */
+        .dot-group { display: flex; gap: 15px; margin-bottom: 50px; }
+        .dot { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-radius: 50%; transition: 0.3s; }
+        .dot.active { background: var(--navy); border-color: var(--navy); transform: scale(1.4); }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .key { width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 300; border: 1px solid #f1f5f9; cursor: pointer; }
+
+        /* --- TEAM UI --- */
+        .node-row { display: flex; align-items: center; gap: 20px; margin-bottom: 40px; opacity: 0; transform: translateY(20px); transition: 0.8s var(--heavy-ease); }
+        .unlocked .node-row { opacity: 1; transform: translateY(0); }
+        .unlocked .node-row:nth-child(even) { flex-direction: row-reverse; text-align: right; }
+        .card-p { flex: 0 0 90px; height: 120px; background: white; border-radius: 25px; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 1px solid #f1f5f9; }
+
+        .identity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .id-node { background: #f8fafc; padding: 30px 10px; border-radius: 35px; border: 1px solid #f1f5f9; font-weight: 800; text-align: center; cursor: pointer; }
+
+        /* --- DOCK & APPS --- */
+        .floating-dock { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: rgba(255,255,255,0.85); backdrop-filter: blur(30px); padding: 15px 30px; border-radius: 40px; display: flex; gap: 22px; z-index: 11000; transition: 1s var(--heavy-ease); border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        .final-step .floating-dock { transform: translateX(-50%) translateY(0); }
+        .dock-icon { width: 55px; height: 55px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; cursor: pointer; transition: 0.2s; }
+
+        .contact-card { background: white; padding: 20px; border-radius: 25px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; border: 1px solid #f1f5f9; cursor: pointer; }
+        .contact-avatar { width: 50px; height: 50px; background: #e2e8f0; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+        
+        #chat-logs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 10px 0; }
+        .msg { padding: 12px 18px; border-radius: 20px; max-width: 80%; font-size: 0.9rem; }
+        .msg.me { align-self: flex-end; background: var(--navy); color: white; }
+        .msg.bot { align-self: flex-start; background: #f1f5f9; }
+        
+        .stat-card { background: white; padding: 25px; border-radius: 30px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f1f5f9; }
+    </style>
+</head>
+<body>
+
+    <div id="global-back" class="back-btn" onclick="handleBack()">←</div>
+
+    <div id="window-system" class="window-overlay">
+        <div class="window-content">
+            <div class="win-header">
+                <div class="win-bar" onclick="closeApp()"></div>
+                <div class="win-close-btn" onclick="closeApp()">X</div>
+            </div>
+            <div id="app-shell" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;"></div>
+        </div>
+    </div>
+
+    <div id="lock-screen">
+        <div style="text-align: center;">
+            <p id="l-date" style="font-weight: 600; opacity: 0.4;">SELASA, 14 APRIL</p>
+            <h1 id="l-time" style="font-size: 6rem; font-weight: 200; letter-spacing: -3px;">00:00</h1>
+        </div>
+        <p style="font-size: 0.75rem; font-weight: 800; letter-spacing: 5px; opacity: 0.2;">SWIPE UP</p>
+    </div>
+
+    <div id="pin-screen">
+        <p style="margin-bottom: 30px; font-weight: 600; opacity: 0.3; letter-spacing: 2px;">SECURE ACCESS</p>
+        <div class="dot-group">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="keypad">
+            <div class="key" onclick="press(1)">1</div><div class="key" onclick="press(2)">2</div><div class="key" onclick="press(3)">3</div>
+            <div class="key" onclick="press(4)">4</div><div class="key" onclick="press(5)">5</div><div class="key" onclick="press(6)">6</div>
+            <div class="key" onclick="press(7)">7</div><div class="key" onclick="press(8)">8</div><div class="key" onclick="press(9)">9</div>
+            <div></div><div class="key" onclick="press(0)">0</div>
+            <div onclick="clearPin()" style="display:flex; align-items:center; font-weight:800; font-size:0.7rem; opacity:0.5">RESET</div>
+        </div>
+    </div>
+
+    <div id="portfolio-hub">
+        <p style="font-size: 0.7rem; font-weight: 800; letter-spacing: 4px; opacity: 0.3; margin-bottom: 40px;">MASTERS_TEAM_2026</p>
+        <div class="node-row"><div class="card-p">ZB</div><div><h3>Zainal Bagus</h3><p style="opacity:0.5">Architect</p></div></div>
+        <div class="node-row"><div class="card-p">AK</div><div><h3>Ahkwan</h3><p style="opacity:0.5">Logic Spec</p></div></div>
+        <div class="node-row"><div class="card-p">HD</div><div><h3>Hendra</h3><p style="opacity:0.5">Circuit Lead</p></div></div>
+        <div class="node-row"><div class="card-p">AD</div><div><h3>Andre</h3><p style="opacity:0.5">Security</p></div></div>
+        <button onclick="navigate('show-selector')" style="width:100%; padding:22px; background:var(--navy); color:white; border-radius:30px; border:none; font-weight:800; margin-top:20px;">CONTINUE</button>
+    </div>
+
+    <div id="node-selector">
+        <h2 style="font-weight: 800; font-size: 2.2rem; margin-bottom: 30px;">Identitas User</h2>
+        <div class="identity-grid">
+            <div class="id-node" onclick="goFinal('Zainal')">ZAINAL</div>
+            <div class="id-node" onclick="goFinal('Ahkwan')">AHKWAN</div>
+            <div class="id-node" onclick="goFinal('Hendra')">HENDRA</div>
+            <div class="id-node" onclick="goFinal('Andre')">ANDRE</div>
+        </div>
+    </div>
+
+    <div id="final-dashboard">
+        <p style="font-size: 0.7rem; font-weight: 800; letter-spacing: 5px; opacity: 0.3; margin-bottom: 10px;">CORE_LIVE</p>
+        <h1 id="user-title" style="font-size: 3.2rem; font-weight: 800; letter-spacing: -2px;">HI, USER</h1>
+        <div style="background: white; padding: 40px; border-radius: 40px; margin-top: 30px; border: 1px solid #f1f5f9;">
+            <p style="opacity: 0.5; line-height: 1.8;">Selamat datang kembali, Master. Sistem siap dioperasikan.</p>
+        </div>
+    </div>
+
+    <div class="floating-dock">
+        <div class="dock-icon" style="background:#22c55e" onclick="openApp('chat')">💬</div>
+        <div class="dock-icon" style="background:#3b82f6" onclick="openApp('call')">📞</div>
+        <div class="dock-icon" style="background:#64748b" onclick="openApp('data')">📊</div>
+        <div class="dock-icon" style="background:#f43f5e" onclick="openApp('music')">🎵</div>
+    </div>
+
+    <script>
+        let inputPin = "";
+        let currentUser = "";
+        const masters = [
+            {id: 'Zainal', role: 'Architect', color: '#10b981', code: 'ZB', greet: 'Nal, hardware Redmi beres?'},
+            {id: 'Ahkwan', role: 'Logic Spec', color: '#3b82f6', code: 'AK', greet: 'Logika database aman?'},
+            {id: 'Hendra', role: 'Circuit Lead', color: '#f59e0b', code: 'HD', greet: 'Solderan lagi panas nih!'},
+            {id: 'Andre', role: 'Security', color: '#ef4444', code: 'AD', greet: 'Firewall sudah gua kunci.'}
+        ];
+
+        const dots = document.querySelectorAll('.dot');
+        const b = document.body;
+
+        // --- NAVIGATION CORE ---
+        function navigate(cls) { b.classList.add(cls); updateBack(); }
+        function handleBack() {
+            if (document.getElementById('window-system').classList.contains('active')) { closeApp(); return; }
+            if (b.classList.contains('final-step')) b.classList.remove('final-step');
+            else if (b.classList.contains('show-selector')) b.classList.remove('show-selector');
+            else if (b.classList.contains('unlocked')) { b.classList.remove('unlocked'); clearPin(); }
+            else if (b.classList.contains('swiped-lock')) b.classList.remove('swiped-lock');
+            updateBack();
+        }
+        function updateBack() {
+            const btn = document.getElementById('global-back');
+            b.classList.contains('swiped-lock') ? btn.classList.add('show-back') : btn.classList.remove('show-back');
+        }
+
+        // --- PIN LOGIC ---
+        let sY = 0;
+        document.getElementById('lock-screen').addEventListener('touchstart', e => sY = e.touches[0].clientY);
+        document.getElementById('lock-screen').addEventListener('touchend', e => { if (sY - e.changedTouches[0].clientY > 100) navigate('swiped-lock'); });
+
+        function press(n) {
+            if(inputPin.length < 4) {
+                inputPin += n;
+                dots[inputPin.length-1].classList.add('active');
+                if(inputPin === "2026") setTimeout(() => navigate('unlocked'), 400);
+                else if(inputPin.length === 4) setTimeout(clearPin, 600);
+            }
+        }
+        function clearPin() { inputPin = ""; dots.forEach(d => d.classList.remove('active')); }
+        function goFinal(n) { currentUser = n; document.getElementById('user-title').innerText = "HI, " + n.toUpperCase(); navigate('final-step'); }
+
+        // --- APP ENGINE ---
+        function openApp(type) {
+            const shell = document.getElementById('app-shell');
+            document.getElementById('window-system').classList.add('active');
+            
+            if(type === 'chat') {
+                let list = `<h2 style="font-weight:800; margin-bottom:20px">Masters Chat</h2>`;
+                masters.filter(m => m.id !== currentUser).forEach(m => {
+                    list += `<div class="contact-card" onclick="startChat('${m.id}')"><div class="contact-avatar" style="color:${m.color}">${m.code}</div><div><p style="font-weight:800">${m.id}</p><p style="font-size:0.7rem; opacity:0.5">${m.role}</p></div></div>`;
+                });
+                shell.innerHTML = list;
+            } else if(type === 'call') {
+                let list = `<h2 style="font-weight:800; margin-bottom:20px">Phone Directory</h2>`;
+                masters.filter(m => m.id !== currentUser).forEach(m => {
+                    list += `<div class="contact-card" onclick="startCall('${m.id}')"><div class="contact-avatar" style="color:${m.color}">${m.code}</div><div><p style="font-weight:800">${m.id}</p><p style="font-size:0.7rem; opacity:0.5">Online</p></div><div style="margin-left:auto">📞</div></div>`;
+                });
+                shell.innerHTML = list;
+            } else if(type === 'data') {
+                shell.innerHTML = `<h2 style="font-weight:800; margin-bottom:20px">Zanz Monitor</h2><div class="stat-card"><span>CPU Load</span><span id="cpu-v" style="font-weight:800; color:#3b82f6">0%</span></div><div class="stat-card"><span>Uplink Status</span><span style="font-weight:800; color:#22c55e">STABLE</span></div>`;
+                window.metricInt = setInterval(() => { if(document.getElementById('cpu-v')) document.getElementById('cpu-v').innerText = Math.floor(Math.random()*15+5) + "%"; }, 1000);
+            } else if(type === 'music') {
+                shell.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center"><div style="width:160px; height:160px; background:#e2e8f0; border-radius:40px; margin-bottom:30px; display:flex; align-items:center; justify-content:center; font-size:3rem">🎵</div><button onclick="this.innerText=this.innerText==='▶'?'⏸':'▶'" style="width:70px; height:70px; border-radius:50%; background:var(--navy); color:white; border:none; font-size:1.5rem">▶</button></div>`;
+            }
+        }
+
+        function startChat(t) {
+            const m = masters.find(x => x.id === t);
+            document.getElementById('app-shell').innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px"><button onclick="openApp('chat')" style="border:none; background:none; font-weight:800; cursor:pointer">←</button><h2 style="font-weight:800">${t}</h2></div>
+                <div id="chat-logs"><div class="msg bot">${m.greet}</div></div>
+                <div style="display:flex; gap:10px; margin-top:20px"><input type="text" id="chat-in" placeholder="Ketik pesan..." style="flex:1; padding:18px; border-radius:20px; border:1px solid #e2e8f0; outline:none"><button onclick="sendMsg('${t}')" style="padding:0 20px; border-radius:20px; background:var(--navy); color:white; border:none; font-weight:800">SEND</button></div>`;
+        }
+
+        function startCall(t) {
+            document.getElementById('app-shell').innerHTML = `
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center">
+                    <div style="width:120px; height:120px; background:#f1f5f9; border-radius:40px; display:flex; align-items:center; justify-content:center; font-size:3rem; margin-bottom:20px">👤</div>
+                    <p style="opacity:0.3; font-weight:800">MEMANGGIL...</p><h1 style="font-size:3.5rem; margin:10px 0 40px">${t.toUpperCase()}</h1>
+                    <div style="width:80px; height:80px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-size:1.5rem" onclick="openApp('call')">📞</div>
+                </div>`;
+        }
+
+        function closeApp() { document.getElementById('window-system').classList.remove('active'); clearInterval(window.metricInt); }
+        
+        function sendMsg(t) {
+            const i = document.getElementById('chat-in'); if(!i.value) return;
+            const l = document.getElementById('chat-logs'); l.innerHTML += `<div class="msg me">${i.value}</div>`; i.value = "";
+            setTimeout(() => { l.innerHTML += `<div class="msg bot">${t}: Oke, gas pol!</div>`; l.scrollTop = l.scrollHeight; }, 800);
+        }
+
+        // --- CLOCK ---
+        setInterval(() => {
+            const n = new Date();
+            document.getElementById('l-time').innerText = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0');
+            document.getElementById('l-date').innerText = n.toLocaleDateString('id-ID', {weekday: 'long', day: 'numeric', month: 'long'}).toUpperCase();
+        }, 1000);
+    </script>
+</body>
+</html>
